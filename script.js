@@ -2,9 +2,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll('.custom-cursor-outline, .medicine-cursor-wrapper').forEach(e => e.remove());
 });
 
-
-
-
 // ==========================================
 // BLOCKCHAIN CONFIG
 // ==========================================
@@ -13,14 +10,11 @@ const CONTRACT_ABI = [
     "function registerBatch(string memory batchId, string memory metadata) public",
     "function verifyBatch(string memory batchId) public view returns (bool)"
 ];
-// Public Sepolia RPC for read-only (Mobile & Laptop verification without MetaMask)
 const PUBLIC_SEPOLIA_RPC = "https://ethereum-sepolia-rpc.publicnode.com";
 
 // ==========================================
 // MEDCHAIN CORE LOGIC & DATA PERSISTENCE
 // ==========================================
-
-// Default initial dataset
 const DEFAULT_MEDICINES = {
     "PCM500-001": {
         name: "Paracetamol 500mg",
@@ -48,7 +42,6 @@ const DEFAULT_MEDICINES = {
     }
 };
 
-// Dummy Manufacturer Credentials
 const AUTH_CREDENTIALS = {
     "admin": "admin123",
     "pharma_med": "med2026"
@@ -108,89 +101,15 @@ function generateMockTxHash() {
 }
 
 // ==========================================
-// MODAL & TIMELINE VERIFICATION LOGIC
+// VERIFICATION LOGIC
 // ==========================================
-// function verifyBatch(batchId) {
-//     if (!batchId) return;
-//     batchId = batchId.trim().toUpperCase();
-
-//     const medicines = getDatabase();
-//     const medicine = medicines[batchId];
-
-//     const modal = document.getElementById("resultModal");
-//     const content = document.getElementById("modalContent");
-
-//     if (!modal || !content) return;
-
-//     if (medicine) {
-//         content.innerHTML = `
-//             <div style="text-align: center;">
-//                 <div style="width: 50px; height: 50px; background: #eef7f0; color: #27704a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 15px;">✓</div>
-//                 <span style="background: rgba(39, 112, 74, 0.1); color: #27704a; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 800;">VERIFIED AUTHENTIC</span>
-//                 <h2 style="margin-top: 10px; color: #12281e; font-size: 22px;">${medicine.name}</h2>
-//                 <p style="font-size: 13px; color: #718077; margin-top: 2px;">Batch ID: <strong>${medicine.batch}</strong></p>
-//             </div>
-
-//             <div class="timeline">
-//                 <div class="timeline-item">
-//                     <h4>Manufacturer Registration</h4>
-//                     <p>Recorded by <strong>${medicine.manufacturer}</strong> on ${medicine.manufactured}</p>
-//                 </div>
-//                 <div class="timeline-item">
-//                     <h4>Quality Check & Certificate</h4>
-//                     <p>Tamper-evident batch record updated on-chain</p>
-//                 </div>
-//                 <div class="timeline-item">
-//                     <h4>Tx Hash Verification</h4>
-//                     <p style="font-family: monospace; font-size: 11px; word-break: break-all; color: #234d3b;">${medicine.txHash || generateMockTxHash()}</p>
-//                 </div>
-//                 <div class="timeline-item">
-//                     <h4>Expiry & Status</h4>
-//                     <p>Valid till: <strong>${medicine.expiry}</strong></p>
-//                 </div>
-//             </div>
-//         `;
-//     } else {
-//         content.innerHTML = `
-//             <div style="text-align: center;">
-//                 <div style="width: 50px; height: 50px; background: #fcebeb; color: #dc3545; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 15px;">✕</div>
-//                 <span style="background: rgba(220, 53, 69, 0.1); color: #dc3545; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 800;">WARNING: UNVERIFIED</span>
-//                 <h2 style="margin-top: 10px; color: #12281e; font-size: 22px;">Counterfeit Alert</h2>
-//                 <p style="font-size: 13px; color: #718077; margin-top: 8px;">No immutable ledger record found for Batch ID: <strong>${batchId}</strong>.</p>
-//                 <p style="font-size: 12px; color: #dc3545; margin-top: 10px; font-weight: 600;">⚠️ Do not consume this medicine package.</p>
-//             </div>
-//         `;
-//     }
-
-//     modal.classList.add("active");
-// }
-
-// function manualVerify() {
-//     const input = document.getElementById("batchInput");
-//     if (!input) return;
-
-//     const batchId = input.value;
-//     if (batchId.trim() === "") {
-//         alert("Please enter a Batch ID.");
-//         return;
-//     }
-//     verifyBatch(batchId);
-// }
-
-// function closeModal() {
-//     const modal = document.getElementById("resultModal");
-//     if (modal) modal.classList.remove("active");
-// }
-
 async function verifyBatch(batchId) {
     if (!batchId) return;
     batchId = batchId.trim().toUpperCase();
 
-    // 1. Check local/default db first
     const medicines = getDatabase();
     let medicine = medicines[batchId];
 
-    // 2. If not in local db, query Sepolia contract directly (Fixes mobile sync issue)
     if (!medicine && typeof ethers !== 'undefined') {
         try {
             const provider = new ethers.providers.JsonRpcProvider(PUBLIC_SEPOLIA_RPC);
@@ -256,6 +175,20 @@ async function verifyBatch(batchId) {
     }
 
     modal.classList.add("active");
+    modal.style.display = "flex";
+}
+
+// Fixed manualVerify binding for the button click
+function manualVerify() {
+    const input = document.getElementById("batchInput");
+    if (!input) return;
+
+    const batchId = input.value.trim();
+    if (batchId === "") {
+        alert("Please enter a Batch ID.");
+        return;
+    }
+    verifyBatch(batchId);
 }
 
 // ==========================================
@@ -291,82 +224,6 @@ function startScanner() {
 // ==========================================
 // MANUFACTURER REGISTRATION LOGIC
 // ==========================================
-// function registerMedicine() {
-//     const name = document.getElementById("medicineNameInput").value.trim();
-//     const batch = document.getElementById("batchIdInput").value.trim().toUpperCase();
-//     const manufacturer = document.getElementById("manufacturerInput").value.trim();
-//     const manufacturingDate = document.getElementById("manufacturingInput").value;
-//     const expiryDate = document.getElementById("expiryInput").value;
-
-//     if (!name || !batch || !manufacturer || !manufacturingDate || !expiryDate) {
-//         alert("Please fill in all medicine details.");
-//         return;
-//     }
-
-//     const medicines = getDatabase();
-
-//     medicines[batch] = {
-//         name: name,
-//         batch: batch,
-//         manufacturer: manufacturer,
-//         manufactured: formatDate(manufacturingDate),
-//         expiry: formatDate(expiryDate),
-//         txHash: generateMockTxHash()
-//     };
-
-//     saveDatabase(medicines);
-
-//     const qrContainer = document.getElementById("qrcode");
-//     if (qrContainer) {
-//         qrContainer.innerHTML = "";
-//         const verificationURL = window.location.origin + window.location.pathname.replace("manufacturer.html", "index.html") + "?batch=" + encodeURIComponent(batch);
-
-//         if (typeof QRCode !== "undefined") {
-//             new QRCode(qrContainer, {
-//                 text: verificationURL,
-//                 width: 220,
-//                 height: 220
-//             });
-//         }
-//     }
-
-//     const placeholder = document.getElementById("qrPlaceholder");
-//     if (placeholder) placeholder.style.display = "none";
-
-//     const resultCard = document.getElementById("qrResult");
-//     if (resultCard) resultCard.style.display = "block";
-
-//     if (document.getElementById("qrMedicineName")) document.getElementById("qrMedicineName").innerHTML = name;
-//     if (document.getElementById("qrBatchId")) document.getElementById("qrBatchId").innerHTML = batch;
-
-//     const regStatus = document.getElementById("registrationStatus");
-//     if (regStatus) {
-//         regStatus.innerHTML = "✓ Medicine registered on-chain successfully. QR Code active for batch <strong>" + batch + "</strong>.";
-//     }
-// }
-
-// function formatDate(dateString) {
-//     const date = new Date(dateString);
-//     return date.toLocaleDateString("en-IN", {
-//         day: "2-digit",
-//         month: "long",
-//         year: "numeric"
-//     });
-// }
-
-// function downloadQR() {
-//     const canvas = document.querySelector("#qrcode canvas");
-//     if (!canvas) {
-//         alert("Please generate a QR code first.");
-//         return;
-//     }
-
-//     const link = document.createElement("a");
-//     link.download = "MedChain-Batch-QR.png";
-//     link.href = canvas.toDataURL("image/png");
-//     link.click();
-// }
-
 async function registerMedicine() {
     const name = document.getElementById("medicineNameInput")?.value.trim();
     const batch = document.getElementById("batchIdInput")?.value.trim().toUpperCase();
@@ -381,7 +238,6 @@ async function registerMedicine() {
 
     const regStatus = document.getElementById("registrationStatus");
     if (regStatus) regStatus.innerHTML = "Step 1: Checking wallet...";
-    console.log("Step 1: Checking window.ethereum", typeof window.ethereum);
 
     if (typeof window.ethereum === 'undefined') {
         alert("MetaMask/Web3 wallet not found in browser!");
@@ -392,9 +248,7 @@ async function registerMedicine() {
 
     try {
         if (regStatus) regStatus.innerHTML = "Step 2: Requesting MetaMask accounts...";
-        console.log("Step 2: Requesting accounts...");
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        console.log("Connected accounts:", accounts);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
 
         if (regStatus) regStatus.innerHTML = "Step 3: Initializing Ethers provider...";
         const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -403,21 +257,17 @@ async function registerMedicine() {
 
         const metadataJson = JSON.stringify({ name, manufacturer, manufactured: manufacturingDate, expiry: expiryDate });
         if (regStatus) regStatus.innerHTML = "Step 4: Check MetaMask popup now!";
-        console.log("Step 4: Calling registerBatch contract method...");
 
         const tx = await contract.registerBatch(batch, metadataJson);
-        console.log("Tx hash received:", tx.hash);
 
         if (regStatus) regStatus.innerHTML = "Step 5: Mining on Sepolia...";
         await tx.wait();
         realTxHash = tx.hash;
-        console.log("Mining completed!");
     } catch (err) {
         console.error("Caught Web3 Error:", err);
         alert("Web3 Error: " + (err.reason || err.message || JSON.stringify(err)));
     }
 
-    // Local DB update for UI sync fallback
     const medicines = typeof getDatabase === 'function' ? getDatabase() : {};
     medicines[batch] = {
         name: name,
@@ -473,7 +323,6 @@ function animateCounters() {
     });
 }
 
-// Check URL Params on Landing Page for Instant Verification
 function checkUrlVerification() {
     const params = new URLSearchParams(window.location.search);
     const batchId = params.get("batch");
@@ -482,19 +331,41 @@ function checkUrlVerification() {
     }
 }
 
-// Initialize on Load
+// ==========================================
+// MODAL CLOSE FUNCTIONS
+// ==========================================
+function closeModal() {
+    const modal = document.getElementById('resultModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+function closeModalOnOutsideClick(event) {
+    const modal = document.getElementById('resultModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+
+// Global Event Listeners
+document.addEventListener('click', function(e) {
+    if (e.target.matches('.close, .modal-close, [data-dismiss="modal"]') || e.target.closest('.close, .modal-close, [data-dismiss="modal"]')) {
+        closeModal();
+    }
+});
+
+// ==========================================
+// CUSTOM CURSOR & INITIALIZATION
+// ==========================================
 document.addEventListener("DOMContentLoaded", function () {
     checkManufacturerAuth();
     getDatabase();
     startScanner();
     animateCounters();
     checkUrlVerification();
-});
 
-// ==========================================
-// DYNAMIC COMBINED MEDICINE CURSOR ENGINE
-// ==========================================
-document.addEventListener("DOMContentLoaded", function () {
     const outline = document.createElement("div");
     outline.classList.add("custom-cursor-outline");
     document.body.appendChild(outline);
@@ -547,38 +418,4 @@ document.addEventListener("DOMContentLoaded", function () {
             document.body.classList.remove("cursor-hover");
         }
     });
-});
-
-// Global modal close handler for 'X' button or overlay
-document.addEventListener('click', function(e) {
-    if (e.target.matches('.close, .modal-close') || e.target.closest('.close, .modal-close')) {
-        const modal = e.target.closest('.modal, [id*="modal"]');
-        if (modal) {
-            modal.style.display = 'none';
-        } else {
-            // fallback: hide known modal IDs/classes
-            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-        }
-    }
-});
-
-// Global Modal Close & Verify Fix
-document.addEventListener('DOMContentLoaded', () => {
-    // Close button handler (X or close class)
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('.close, .modal-close, [data-dismiss="modal"]') || e.target.closest('.close, .modal-close, [data-dismiss="modal"]')) {
-            const modal = e.target.closest('.modal, [id*="modal"]');
-            if (modal) {
-                modal.style.display = 'none';
-            } else {
-                document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-            }
-        }
-    });
-
-    // Verify button binding fallback
-    const verifyBtn = document.getElementById('verifyButton') || document.querySelector('.verify-btn');
-    if (verifyBtn && typeof verifyBatch === 'function') {
-        verifyBtn.addEventListener('click', verifyBatch);
-    }
 });
