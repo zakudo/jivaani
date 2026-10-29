@@ -304,11 +304,26 @@ async function registerMedicine() {
     const qrContainer = document.getElementById("qrcode");
     if (qrContainer) {
         qrContainer.innerHTML = "";
+        
+        // Safe URL generation with encoded parameters for cross-device support
         const baseUrl = window.location.origin + window.location.pathname.replace("manufacturer.html", "index.html");
-        const verificationURL = `${baseUrl}?batch=${encodeURIComponent(batch)}&name=${encodeURIComponent(name)}&mfr=${encodeURIComponent(manufacturer)}&mfgDate=${encodeURIComponent(manufacturingDate)}&expDate=${encodeURIComponent(expiryDate)}&tx=${encodeURIComponent(realTxHash)}`;
+        const verificationURL = `${baseUrl}?batch=${encodeURIComponent(batch)}&name=${encodeURIComponent(name || "")}&mfr=${encodeURIComponent(manufacturer || "")}&mfgDate=${encodeURIComponent(manufacturingDate || "")}&expDate=${encodeURIComponent(expiryDate || "")}&tx=${encodeURIComponent(realTxHash || "")}`;
 
         if (typeof QRCode !== "undefined") {
-            new QRCode(qrContainer, { text: verificationURL, width: 220, height: 220 });
+            try {
+                new QRCode(qrContainer, {
+                    text: verificationURL,
+                    width: 220,
+                    height: 220,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (err) {
+                console.error("QR Generation Error:", err);
+            }
+        } else {
+            console.error("QRCode library is not loaded!");
         }
     }
 
