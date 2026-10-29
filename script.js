@@ -101,14 +101,14 @@ function generateMockTxHash() {
 }
 
 // ==========================================
-// VERIFICATION LOGIC
+// VERIFICATION LOGIC (CROSS-DEVICE URL SUPPORT)
 // ==========================================
-async function verifyBatch(batchId) {
+async function verifyBatch(batchId, customData = null) {
     if (!batchId) return;
     batchId = batchId.trim().toUpperCase();
 
     const medicines = getDatabase();
-    let medicine = medicines[batchId];
+    let medicine = customData || medicines[batchId];
 
     if (!medicine && typeof ethers !== 'undefined') {
         try {
@@ -178,7 +178,6 @@ async function verifyBatch(batchId) {
     modal.style.display = "flex";
 }
 
-// Fixed manualVerify binding for the button click
 function manualVerify() {
     const input = document.getElementById("batchInput");
     if (!input) return;
@@ -192,7 +191,7 @@ function manualVerify() {
 }
 
 // ==========================================
-// QR SCANNER LOGIC
+// QR SCANNER LOGIC (CROSS-DEVICE URL SUPPORT)
 // ==========================================
 function startScanner() {
     const readerElement = document.getElementById("reader");
@@ -206,12 +205,33 @@ function startScanner() {
         (decodedText) => {
             scanner.stop().then(() => {
                 let batchId = decodedText;
+                let customData = null;
+
                 try {
                     const url = new URL(decodedText);
                     const batch = url.searchParams.get("batch");
-                    if (batch) batchId = batch;
+                    if (batch) {
+                        batchId = batch;
+                        const name = url.searchParams.get("name");
+                        const manufacturer = url.searchParams.get("mfr");
+                        const manufactured = url.searchParams.get("mfgDate");
+                        const expiry = url.searchParams.get("expDate");
+                        const txHash = url.searchParams.get("tx");
+
+                        if (name && manufacturer) {
+                            customData = {
+                                name: decodeURIComponent(name),
+                                batch: batchId,
+                                manufacturer: decodeURIComponent(manufacturer),
+                                manufactured: manufactured ? decodeURIComponent(manufactured) : "Recorded on-chain",
+                                expiry: expiry ? decodeURIComponent(expiry) : "Active Ledger Entry",
+                                txHash: txHash || CONTRACT_ADDRESS
+                            };
+                        }
+                    }
                 } catch (error) {}
-                verifyBatch(batchId);
+
+                verifyBatch(batchId, customData);
             });
         },
         (errorMessage) => {}
@@ -284,7 +304,9 @@ async function registerMedicine() {
     const qrContainer = document.getElementById("qrcode");
     if (qrContainer) {
         qrContainer.innerHTML = "";
-        const verificationURL = window.location.origin + window.location.pathname.replace("manufacturer.html", "index.html") + "?batch=" + encodeURIComponent(batch);
+        const baseUrl = window.location.origin + window.location.pathname.replace("manufacturer.html", "index.html");
+        const verificationURL = `${baseUrl}?batch=${encodeURIComponent(batch)}&name=${encodeURIComponent(name)}&mfr=${encodeURIComponent(manufacturer)}&mfgDate=${encodeURIComponent(manufacturingDate)}&expDate=${encodeURIComponent(expiryDate)}&tx=${encodeURIComponent(realTxHash)}`;
+
         if (typeof QRCode !== "undefined") {
             new QRCode(qrContainer, { text: verificationURL, width: 220, height: 220 });
         }
@@ -327,7 +349,24 @@ function checkUrlVerification() {
     const params = new URLSearchParams(window.location.search);
     const batchId = params.get("batch");
     if (batchId) {
-        verifyBatch(batchId);
+        let customData = null;
+        const name = params.get("name");
+        const manufacturer = params.get("mfr");
+        const manufactured = params.get("mfgDate");
+        const expiry = params.get("expDate");
+        const txHash = params.get("tx");
+
+        if (name && manufacturer) {
+            customData = {
+                name: decodeURIComponent(name),
+                batch: batchId,
+                manufacturer: decodeURIComponent(manufacturer),
+                manufactured: manufactured ? decodeURIComponent(manufactured) : "Recorded on-chain",
+                expiry: expiry ? decodeURIComponent(expiry) : "Active Ledger Entry",
+                txHash: txHash || CONTRACT_ADDRESS
+            };
+        }
+        verifyBatch(batchId, customData);
     }
 }
 
@@ -349,7 +388,6 @@ function closeModalOnOutsideClick(event) {
     }
 }
 
-// Global Event Listeners
 document.addEventListener('click', function(e) {
     if (e.target.matches('.close, .modal-close, [data-dismiss="modal"]') || e.target.closest('.close, .modal-close, [data-dismiss="modal"]')) {
         closeModal();
