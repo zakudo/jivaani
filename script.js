@@ -22,6 +22,8 @@ const DEFAULT_MEDICINES = {
         manufacturer: "MedPharma Laboratories",
         manufactured: "10 September 2026",
         expiry: "09 September 2028",
+        city: "Chennai",
+        state: "Tamil Nadu",
         txHash: "0x8f2a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a"
     },
     "AMX250-002": {
@@ -30,6 +32,8 @@ const DEFAULT_MEDICINES = {
         manufacturer: "HealthCare Pharma",
         manufactured: "12 September 2026",
         expiry: "11 September 2028",
+        city: "Bengaluru",
+        state: "Karnataka",
         txHash: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
     },
     "AZT500-003": {
@@ -38,6 +42,8 @@ const DEFAULT_MEDICINES = {
         manufacturer: "LifeMed Pharmaceuticals",
         manufactured: "14 September 2026",
         expiry: "13 September 2028",
+        city: "Mumbai",
+        state: "Maharashtra",
         txHash: "0x3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d"
     }
 };
@@ -122,6 +128,8 @@ async function verifyBatch(batchId, customData = null) {
                     manufacturer: "Sepolia Verified Ledger",
                     manufactured: "Recorded on-chain",
                     expiry: "Active Ledger Entry",
+                    city: "General Distribution",
+                    state: "National",
                     txHash: CONTRACT_ADDRESS
                 };
             }
@@ -135,6 +143,8 @@ async function verifyBatch(batchId, customData = null) {
     if (!modal || !content) return;
 
     if (medicine) {
+        const locationText = (medicine.city && medicine.state) ? `${medicine.city}, ${medicine.state}` : "Authorized Distribution Zone";
+
         content.innerHTML = `
             <div style="text-align: center;">
                 <div style="width: 50px; height: 50px; background: #eef7f0; color: #27704a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 15px;">✓</div>
@@ -146,7 +156,11 @@ async function verifyBatch(batchId, customData = null) {
             <div class="timeline">
                 <div class="timeline-item">
                     <h4>Manufacturer Registration</h4>
-                    <p>Recorded by <strong>${medicine.manufacturer}</strong> on ${medicine.manufactured}</p>
+                    <p>Recorded by <strong>${medicine.manufacturer}</strong> on ${medicine.manufactured || "Record On-Chain"}</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Authorized Distribution Zone</h4>
+                    <p>Restricted/Intended for: <strong>${locationText}</strong></p>
                 </div>
                 <div class="timeline-item">
                     <h4>Quality Check & Certificate</h4>
@@ -216,6 +230,8 @@ function startScanner() {
                         const manufacturer = url.searchParams.get("mfr");
                         const manufactured = url.searchParams.get("mfgDate");
                         const expiry = url.searchParams.get("expDate");
+                        const city = url.searchParams.get("city");
+                        const state = url.searchParams.get("state");
                         const txHash = url.searchParams.get("tx");
 
                         if (name) {
@@ -225,16 +241,18 @@ function startScanner() {
                                 manufacturer: manufacturer ? decodeURIComponent(manufacturer) : "MedPharma Laboratories",
                                 manufactured: manufactured ? decodeURIComponent(manufactured) : "10 September 2026",
                                 expiry: expiry ? decodeURIComponent(expiry) : "09 September 2028",
+                                city: city ? decodeURIComponent(city) : "",
+                                state: state ? decodeURIComponent(state) : "",
                                 txHash: txHash || CONTRACT_ADDRESS
                             };
                         }
                     }
-                } catch (error) {}
+                } catch (error) { }
 
                 verifyBatch(batchId, customData);
             });
         },
-        (errorMessage) => {}
+        (errorMessage) => { }
     ).catch((error) => {
         const status = document.getElementById("scannerStatus");
         if (status) status.innerHTML = "Camera permission required or not supported.";
@@ -250,9 +268,11 @@ async function registerMedicine() {
     const manufacturer = document.getElementById("manufacturerInput")?.value.trim();
     const manufacturingDate = document.getElementById("manufacturingInput")?.value;
     const expiryDate = document.getElementById("expiryInput")?.value;
+    const city = document.getElementById("cityInput")?.value.trim();
+    const state = document.getElementById("stateInput")?.value.trim();
 
-    if (!name || !batch || !manufacturer || !manufacturingDate || !expiryDate) {
-        alert("Please fill in all details.");
+    if (!name || !batch || !manufacturer || !manufacturingDate || !expiryDate || !city || !state) {
+        alert("Please fill in all details including City and State.");
         return;
     }
 
@@ -275,7 +295,7 @@ async function registerMedicine() {
         const signer = provider.getSigner();
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-        const metadataJson = JSON.stringify({ name, manufacturer, manufactured: manufacturingDate, expiry: expiryDate });
+        const metadataJson = JSON.stringify({ name, manufacturer, manufactured: manufacturingDate, expiry: expiryDate, city, state });
         if (regStatus) regStatus.innerHTML = "Step 4: Check MetaMask popup now!";
 
         const tx = await contract.registerBatch(batch, metadataJson);
@@ -295,6 +315,8 @@ async function registerMedicine() {
         manufacturer: manufacturer,
         manufactured: manufacturingDate,
         expiry: expiryDate,
+        city: city,
+        state: state,
         txHash: realTxHash
     };
     if (typeof saveDatabase === 'function') {
@@ -305,9 +327,8 @@ async function registerMedicine() {
     if (qrContainer) {
         qrContainer.innerHTML = "";
         
-        // Clean and short URL format to ensure 100% QR rendering success
         const baseUrl = window.location.origin + window.location.pathname.replace("manufacturer.html", "index.html");
-        const verificationURL = `${baseUrl}?batch=${encodeURIComponent(batch)}&name=${encodeURIComponent(name)}&mfr=${encodeURIComponent(manufacturer)}&expDate=${encodeURIComponent(expiryDate)}`;
+        const verificationURL = `${baseUrl}?batch=${encodeURIComponent(batch)}&name=${encodeURIComponent(name)}&mfr=${encodeURIComponent(manufacturer)}&expDate=${encodeURIComponent(expiryDate)}&city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}&tx=${encodeURIComponent(realTxHash)}`;
 
         if (typeof QRCode !== "undefined") {
             try {
@@ -334,7 +355,7 @@ async function registerMedicine() {
     if (document.getElementById("qrBatchId")) document.getElementById("qrBatchId").innerHTML = batch;
 
     if (regStatus) {
-        regStatus.innerHTML = `✓ Done! Tx: <a href="https://sepolia.etherscan.io/tx/${realTxHash}" target="_blank">${realTxHash.slice(0,10)}...</a>`;
+        regStatus.innerHTML = `✓ Done! Tx: <a href="https://sepolia.etherscan.io/tx/${realTxHash}" target="_blank">${realTxHash.slice(0, 10)}...</a>`;
     }
 }
 
@@ -369,6 +390,9 @@ function checkUrlVerification() {
         const name = params.get("name");
         const manufacturer = params.get("mfr");
         const expiry = params.get("expDate");
+        const city = params.get("city");
+        const state = params.get("state");
+        const txHash = params.get("tx");
 
         if (name) {
             customData = {
@@ -377,7 +401,9 @@ function checkUrlVerification() {
                 manufacturer: manufacturer ? decodeURIComponent(manufacturer) : "MedPharma Laboratories",
                 manufactured: "10 September 2026",
                 expiry: expiry ? decodeURIComponent(expiry) : "09 September 2028",
-                txHash: CONTRACT_ADDRESS
+                city: city ? decodeURIComponent(city) : "",
+                state: state ? decodeURIComponent(state) : "",
+                txHash: txHash || CONTRACT_ADDRESS
             };
         }
         verifyBatch(batchId, customData);
@@ -402,7 +428,7 @@ function closeModalOnOutsideClick(event) {
     }
 }
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (e.target.matches('.close, .modal-close, [data-dismiss="modal"]') || e.target.closest('.close, .modal-close, [data-dismiss="modal"]')) {
         closeModal();
     }
@@ -425,7 +451,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const cursorContainer = document.createElement("div");
     cursorContainer.classList.add("medicine-cursor-wrapper");
     cursorContainer.innerHTML = `
-        <svg class="medicine-cursor-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="npm medicine-cursor-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <g transform="rotate(-45 16 16)">
                 <path d="M11 6C11 3.23858 13.2386 1 16 1C18.7614 1 21 3.23858 21 6V15H11V6Z" fill="#234d3b"/>
                 <path d="M11 17H21V26C21 28.7614 18.7614 31 16 31C13.2386 31 11 28.7614 11 26V17Z" fill="#a3d9bc"/>
